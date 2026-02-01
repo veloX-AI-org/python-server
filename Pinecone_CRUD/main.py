@@ -82,18 +82,17 @@ def upsert_document_data(docs, DOCID, index):
 ## --------------
 ## Delete QUERY
 ## --------------
-# def delete_embeddings(index, url):
-#     try:
-#         index.delete(
-#             filter={
-#                 "source_url": {"$eq": url}
-#             }
-#         )
-            
-#         return "Data Deleted successfully!"
-
-#     except:
-#         return "Failed to delete embeddings"
+def delete_doc(index, docid):
+    try:
+        print("Deleting docs with source_key =", docid)
+        res = index.delete(
+            filter={"source_key": {"$eq": docid}}
+        )
+        print("Delete response:", res)
+        return "Data Deleted successfully!"
+    except Exception as e:
+        print("Delete failed:", e)
+        return f"Failed to delete embeddings: {e}"
 
 ## --------------
 ## FIND QUERY
@@ -110,3 +109,4 @@ def upsert_document_data(docs, DOCID, index):
 
 # for match in results["matches"]:
 #     print(match["metadata"]["text"])
+

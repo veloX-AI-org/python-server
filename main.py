@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
-from Quiz import extractor, generator
-from Pinecone_CRUD.main import create_index, upsert_document_data
+# from Quiz import extractor, generator
+from Pinecone_CRUD.main import create_index, upsert_document_data, delete_doc
 
 app = Flask(__name__)
 
@@ -41,6 +41,24 @@ def UpsertDocuments():
     return jsonify({
         'success': True,
         'message': upsertedOrNot
+    })
+
+@app.route('/delete_documents', methods=['POST'])
+def deleteDocuments():
+    data = request.get_json()
+    
+    # Create INDEX if not exist
+    INDEX = create_index(data['indexID'])
+
+    # Upsert Documents At Pinecone
+    deletedOrNot = delete_doc(
+        index=INDEX,
+        docid=data['docID']
+    )
+
+    return jsonify({
+        'success': True,
+        'message': deletedOrNot
     })
 
 if __name__ == "__main__":
