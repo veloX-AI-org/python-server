@@ -2,7 +2,7 @@ import os
 from langchain_huggingface import HuggingFaceEmbeddings
 from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
-# from GetDocuments import get_document
+from .GetDocuments import get_document
 import uuid
 
 load_dotenv()
@@ -31,10 +31,11 @@ def create_index(index_name):
     return index
 
 ## --------------
-## UPSERT DOCUMENTS AT PINECONE
+## UPSERT DOCUMENTS
 ## --------------
 def upsert_document_data(docs, DOCID, index):
     try:
+        print("Upserting document with source_key =", DOCID)
         embeddings = model.embed_documents(docs)
         
         vectors = []
@@ -48,7 +49,8 @@ def upsert_document_data(docs, DOCID, index):
                 }
             })
 
-        index.upsert(vectors=vectors)
+        res = index.upsert(vectors=vectors)
+        print("Upsert response:", res)
         return "Data Upserted Successfully!"
     except Exception as e:
         print(e)
@@ -57,37 +59,43 @@ def upsert_document_data(docs, DOCID, index):
 ## --------------
 ## UPSERT VALUES
 ## --------------
-# def upsert_data(url, index):
-#     try:
-#         texts = get_document(url)
+def upsert_url_content(url, index, docID):
+    try:
+        print("Upserting url with source_urlID =", docID)
+        texts = get_document(url)
+        embeddings = model.embed_documents(texts)
 
-#         embeddings = model.embed_documents(texts)
+        vectors = []
+        for i, emb in enumerate(embeddings):
+            vectors.append({
+                "id": f"doc-{i}",
+                "values": emb,
+                "metadata": {
+                    "text": texts[i],
+                    "source_urlID": docID
+                }
+            })
 
-#         vectors = []
-#         for i, emb in enumerate(embeddings):
-#             vectors.append({
-#                 "id": f"doc-{i}",
-#                 "values": emb,
-#                 "metadata": {
-#                     "text": texts[i],
-#                     "source_url": url
-#                 }
-#             })
+        res = index.upsert(vectors=vectors)
+        print("Upsert response:", res)
+        return "Data Upserted Successfully!"
+    except:
+        return "Failed to Upsert!"        
 
-#         index.upsert(vectors=vectors)
-#         return "Data Upserted Successfully!"
-#     except:
-#         return "Failed to Upsert!"
-
-## --------------
-## Delete QUERY
-## --------------
-def delete_doc(index, docid):
+## -------------
+## Delete URLs and Documents
+## -------------    
+def delete_source(index, docid, docType):
     try:
         print("Deleting docs with source_key =", docid)
-        res = index.delete(
-            filter={"source_key": {"$eq": docid}}
-        )
+        if docType == 'doc':
+            res = index.delete(
+                filter={"source_key": {"$eq": docid}}
+            )
+        else:
+            res = index.delete(
+                filter={"source_urlID": {"$eq": docid}}
+            )
         print("Delete response:", res)
         return "Data Deleted successfully!"
     except Exception as e:

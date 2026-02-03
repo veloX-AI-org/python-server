@@ -1,6 +1,6 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify # type: ignore
 # from Quiz import extractor, generator
-from Pinecone_CRUD.main import create_index, upsert_document_data, delete_doc
+from Pinecone_CRUD.main import create_index, upsert_document_data, upsert_url_content, delete_source
 
 app = Flask(__name__)
 
@@ -20,7 +20,6 @@ def home():
 #     quizzes = generator.generate_quiz(transcript)
 
 #     return jsonify({
-#         'success': True, 
 #         'message': quizzes
 #     })
 
@@ -39,7 +38,6 @@ def UpsertDocuments():
     )
 
     return jsonify({
-        'success': True,
         'message': upsertedOrNot
     })
 
@@ -51,13 +49,49 @@ def deleteDocuments():
     INDEX = create_index(data['indexID'])
 
     # Upsert Documents At Pinecone
-    deletedOrNot = delete_doc(
+    deletedOrNot = delete_source(
         index=INDEX,
-        docid=data['docID']
+        docid=data['docID'],
+        docType='doc'
     )
 
     return jsonify({
-        'success': True,
+        'message': deletedOrNot
+    })
+
+@app.route('/upsert_url_info', methods=['POST'])
+def upsert_url_info():
+    data = request.get_json()
+    
+    # Create Index If Not Exist
+    INDEX = create_index(data['indexID'])
+    
+    # Upsert Contect to Pinecone
+    upsertedOrNot = upsert_url_content(
+        url=data['url'], 
+        index=INDEX, 
+        docID=data['docID']
+    )
+
+    return jsonify({
+        'message': upsertedOrNot
+    })
+
+@app.route('/delete_url_info', methods=['POST'])
+def deleteUrls():
+    data = request.get_json()
+    
+    # Create INDEX if not exist
+    INDEX = create_index(data['indexID'])
+
+    # Upsert Documents At Pinecone
+    deletedOrNot = delete_source(
+        index=INDEX,
+        docid=data['urlID'],
+        docType='url'
+    )
+
+    return jsonify({
         'message': deletedOrNot
     })
 
