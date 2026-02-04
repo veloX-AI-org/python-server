@@ -1,5 +1,5 @@
-from flask import Flask, request, jsonify # type: ignore
-# from Quiz import extractor, generator
+from flask import Flask, request, jsonify 
+from Quiz import extractor, generator
 from Pinecone_CRUD.main import create_index, upsert_document_data, upsert_url_content, delete_source
 
 app = Flask(__name__)
@@ -8,20 +8,22 @@ app = Flask(__name__)
 def home():
     return "Home"
 
-# @app.route('/generateQuiz', methods=['POST'])
-# def GenerateQuize():
-#     data = request.get_json()
+@app.route('/generateQuiz', methods=['POST'])
+def GenerateQuize():
+    data = request.get_json()
     
-#     # Get Video ID & Transcript
-#     video_id = extractor.getID(url=data['youtubeURLLink'])
-#     transcript = extractor.get_transript(video_id=video_id)
+    # Get Video ID & Transcript
+    video_id = extractor.getID(url=data['youtubeURLLink'])
+    transcript = extractor.get_transript(video_id=video_id)
 
-#     # Generate Quiz
-#     quizzes = generator.generate_quiz(transcript)
+    # Generate Quiz
+    print(f"Quiz generating of the video: {video_id}")
+    quizzes = generator.generate_quiz(transcript)
 
-#     return jsonify({
-#         'message': quizzes
-#     })
+    return jsonify({
+        'success': True,
+        'message': quizzes
+    })
 
 @app.route('/upsert_documents', methods=['POST'])
 def UpsertDocuments():
