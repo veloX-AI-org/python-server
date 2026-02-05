@@ -1,0 +1,5 @@
+__pycache__
+Quiz/__pycache__
+Pinecone_CRUD/__pycache__
+venv
+.env

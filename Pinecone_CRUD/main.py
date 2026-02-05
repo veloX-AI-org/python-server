@@ -1,5 +1,5 @@
 import os
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
 from .GetDocuments import get_document
@@ -7,8 +7,9 @@ import uuid
 
 load_dotenv()
 
-model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-print("Embedding Model Loaded")
+model = OpenAIEmbeddings(
+    model="text-embedding-3-small"   # cheapest OpenAI embedding
+)
 
 pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
 
@@ -19,7 +20,7 @@ def create_index(index_name):
     if index_name not in pc.list_indexes().names():
         pc.create_index(
             name=index_name,
-            dimension=384,
+            dimension=1536,
             metric="cosine",
             spec=ServerlessSpec(
                 cloud='aws',
@@ -37,9 +38,13 @@ def upsert_document_data(docs, DOCID, index):
     try:
         print("Upserting document with source_key =", DOCID)
         embeddings = model.embed_documents(docs)
-        
+
         vectors = []
         for i, emb in enumerate(embeddings):
+            if not emb or not isinstance(emb, list):
+                print(f"Skipping doc {i}: missing embedding")
+                continue
+
             vectors.append({
                 "id": f"doc-{uuid.uuid4()}",
                 "values": emb,
@@ -49,12 +54,17 @@ def upsert_document_data(docs, DOCID, index):
                 }
             })
 
+        if not vectors:
+            print("No valid vectors to upsert")
+            return "We failed to get information from profived file. Nothing to upsert"
+
         res = index.upsert(vectors=vectors)
         print("Upsert response:", res)
         return "Data Upserted Successfully!"
+
     except Exception as e:
-        print(e)
-        return "Failed to Upsert!"
+        print("Upsert failed:", e)
+        return "Failed"
 
 ## --------------
 ## UPSERT VALUES
