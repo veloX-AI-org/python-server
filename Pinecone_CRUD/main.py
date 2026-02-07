@@ -8,7 +8,7 @@ import uuid
 load_dotenv()
 
 model = OpenAIEmbeddings(
-    model="text-embedding-3-small"   # cheapest OpenAI embedding
+    model="text-embedding-3-small"  
 )
 
 pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
@@ -113,18 +113,50 @@ def delete_source(index, docid, docType):
         return f"Failed to delete embeddings: {e}"
 
 ## --------------
-## FIND QUERY
+## FIND SUMMARY QUERY
 ## --------------
-# query_text = "What is the name of the product?"
-# query_embedding = model.embed_query(query_text)
+def getContext(indexID, allurlIDs, alldocIDs):
+    final_context = ""
 
-# index = pc.Index("523d9e14-2d8a-4da7-824b-4f1153d0a72d")
-# results = index.query(
-#     vector=query_embedding,
-#     top_k=3,
-#     include_metadata=True
-# )
+    query_text = "general information in the document" # General query for all document to get summary. 
+    # Generate embeddings of above query using GPT embedding model.
+    query_embedding = model.embed_query(query_text)
 
-# for match in results["matches"]:
-#     print(match["metadata"]["text"])
+    # Index always exits
+    index = pc.Index(indexID)
 
+    final_context += "URL Content: \n"
+    if (allurlIDs):
+        for urlID in allurlIDs:
+            # Get 5 context infomation object for every url information
+            results = index.query(
+                vector=query_embedding,
+                top_k=5,
+                filter = { 
+                    'source_urlID': urlID
+                },
+                include_metadata=True
+            )
+
+            # Return text from those objects
+            final_context += '\n'.join([docs['metadata']['text'] for docs in results.matches])
+
+    final_context += "\n==============\n"
+    final_context += "DOCUMENT Content: \n"
+
+    if (alldocIDs):
+        for docid in alldocIDs:
+            # Get 2 context infomation object for every docs information
+            results = index.query(
+                vector=query_embedding,
+                top_k=3,
+                filter = { 
+                    'source_key': docid
+                },
+                include_metadata=True
+            )
+
+            # Return text from those objects
+            final_context += '\n'.join([docs['metadata']['text'] for docs in results.matches])
+
+    return final_context

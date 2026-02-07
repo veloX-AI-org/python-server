@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify 
 from Quiz import extractor, generator
-from Pinecone_CRUD.main import create_index, upsert_document_data, upsert_url_content, delete_source
+from Pinecone_CRUD.main import create_index, upsert_document_data, upsert_url_content, delete_source, getContext
+from getSummary.main import getResponse
 
 app = Flask(__name__)
 
@@ -95,6 +96,34 @@ def deleteUrls():
 
     return jsonify({
         'message': deletedOrNot
+    })
+
+@app.route("/getSummary", methods=['POST'])
+def getSummary():
+    data = request.get_json()
+    print(data)
+    print("="*30)
+    
+    # Fetch context from pinecone database
+    context = getContext(
+        indexID=data['indexID'], 
+        allurlIDs=data['allurlsID'], 
+        alldocIDs=data['alldocsID']
+    )
+
+    print("Context: \n", context)
+    print("="*30)
+
+    # Feed context to model and get response
+    response = getResponse(context)
+
+    print("Summary: \n", response)
+
+    # Send response to client
+    return jsonify({
+        "questions": response.questions,
+        "success": True,
+        "summary": response.summary
     })
 
 if __name__ == "__main__":
