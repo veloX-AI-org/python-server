@@ -75,11 +75,11 @@ prompt = PromptTemplate(
     input_variables=['previous_conversation', 'query']
 )
 
-def getChatResponse(query):
+def getChatResponse(query, past_conversation):
     chain = prompt | model
 
     response = chain.invoke({
-        "previous_conversation": [],
+        "previous_conversation": past_conversation,
         "query": query
     })
 

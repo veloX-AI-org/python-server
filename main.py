@@ -136,7 +136,9 @@ def getAIResponse():
         return {"error": "No JSON received"}, 400
 
     user_query = data.get("query", "")
-    response = getChatResponse(user_query)
+    pastConverstation = data.get("pastConverstation", "")
+    
+    response = getChatResponse(user_query, pastConverstation)
 
     print(response)
 
