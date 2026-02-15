@@ -1,7 +1,9 @@
-from flask import Flask, request, jsonify 
+import time
+from flask import Flask, request, jsonify, Response, stream_with_context
 from Quiz import extractor, generator
 from Pinecone_CRUD.main import create_index, upsert_document_data, upsert_url_content, delete_source, getContext
 from getSummary.main import getResponse
+from Chat.main import getChatResponse
 
 app = Flask(__name__)
 
@@ -126,5 +128,21 @@ def getSummary():
         "summary": response.summary
     })
 
+@app.route("/getAIResponse", methods=['POST'])
+def getAIResponse():
+    data = request.get_json()
+    
+    if not data:
+        return {"error": "No JSON received"}, 400
+
+    user_query = data.get("query", "")
+    response = getChatResponse(user_query)
+
+    print(response)
+
+    return jsonify({
+        "response": response
+    })
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, threaded=True)
