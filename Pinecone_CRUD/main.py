@@ -160,3 +160,18 @@ def getContext(indexID, allurlIDs, alldocIDs):
             final_context += '\n'.join([docs['metadata']['text'] for docs in results.matches])
 
     return final_context
+
+def getSpecificContext(sourceType, sourceID, indexID):
+    # Index always exits
+    index = pc.Index(indexID)
+
+    results = index.query(
+        vector=[0.0]*1536,
+        top_k=10,
+        filter = {'source_urlID': sourceID} if sourceType == "URL" else {'source_key': sourceID},
+        include_metadata=True
+    )
+
+    context = '\n'.join([docs['metadata']['text'] for docs in results.matches])
+
+    return context

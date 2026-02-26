@@ -1,7 +1,7 @@
 import time
-from flask import Flask, request, jsonify, Response, stream_with_context
+from flask import Flask, request, jsonify
 from Quiz import extractor, generator
-from Pinecone_CRUD.main import create_index, upsert_document_data, upsert_url_content, delete_source, getContext
+from Pinecone_CRUD.main import create_index, upsert_document_data, upsert_url_content, delete_source, getContext, getSpecificContext
 from getSummary.main import getResponse
 from Chat.main import getChatResponse
 
@@ -103,8 +103,6 @@ def deleteUrls():
 @app.route("/getSummary", methods=['POST'])
 def getSummary():
     data = request.get_json()
-    print(data)
-    print("="*30)
     
     # Fetch context from pinecone database
     context = getContext(
@@ -119,13 +117,31 @@ def getSummary():
     # Feed context to model and get response
     response = getResponse(context)
 
-    print("Summary: \n", response)
-
     # Send response to client
     return jsonify({
         "questions": response.questions,
         "success": True,
         "summary": response.summary
+    })
+
+@app.route("/getSummaryForEveryDoc", methods=['POST'])
+def getSummaryForEveryDoc():
+    data = request.get_json()
+    
+    context = getSpecificContext(
+        sourceType = data["sourceType"],
+        sourceID = data["sourceID"],
+        indexID = data["indexID"]
+    )
+
+    print(context)
+
+    # Feed context to model and get response
+    response = getResponse(context)
+    
+    return jsonify({
+        "summary": response.summary,
+        "success": True
     })
 
 @app.route("/getAIResponse", methods=['POST'])
