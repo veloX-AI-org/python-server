@@ -4,6 +4,7 @@ from Quiz import extractor, generator
 from Pinecone_CRUD.main import create_index, upsert_document_data, upsert_url_content, delete_source, getContext, getSpecificContext
 from getSummary.main import getResponse
 from Chat.main import getChatResponse
+import asyncio
 
 app = Flask(__name__)
 
@@ -111,9 +112,6 @@ def getSummary():
         alldocIDs=data['alldocsID']
     )
 
-    print("Context: \n", context)
-    print("="*30)
-
     # Feed context to model and get response
     response = getResponse(context)
 
@@ -134,8 +132,6 @@ def getSummaryForEveryDoc():
         indexID = data["indexID"]
     )
 
-    print(context)
-
     # Feed context to model and get response
     response = getResponse(context)
     
@@ -146,20 +142,45 @@ def getSummaryForEveryDoc():
 
 @app.route("/getAIResponse", methods=['POST'])
 def getAIResponse():
+    """
+    A function which reads four inputs
+        - user_query: Query from user.
+        - pastConverstation: Past conversation between user and ai.
+        - userID: user's unique ID. and
+        - notebookID
+
+    Based on this, it first decides weather it should use a tool or simple answer.
+
+    - If answer is not provided my model's own learning then it must be answer from context.
+
+    And this workflow design to fetch only relevent context chunks, insuring all the docs must be equally treated.
+
+    The document which is highly relected to a perticular source then it's document count must be higher. As compare to the other sources.
+    """
+
+    # Get data from client
     data = request.get_json()
     
     if not data:
         return {"error": "No JSON received"}, 400
 
+    # Handle all the usefull parameters
     user_query = data.get("query", "")
     pastConverstation = data.get("pastConverstation", "")
+    userID = data.get("userID", "")
+    notebookID = data.get("notebookID", "")
     
-    response = getChatResponse(user_query, pastConverstation)
+    # Invoke our chatbot asynchronously
+    response = asyncio.run(getChatResponse(
+        query=user_query,
+        past_conversation=pastConverstation,
+        userID=userID,
+        notebookID=notebookID
+    ))
 
-    print(response)
-
+    # return response
     return jsonify({
-        "response": response
+        "response": response['messages'][-1].content
     })
 
 if __name__ == "__main__":
