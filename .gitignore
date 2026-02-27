@@ -3,3 +3,5 @@ Quiz/__pycache__
 Pinecone_CRUD/__pycache__
 venv
 .env
+
+test.py
