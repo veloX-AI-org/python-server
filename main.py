@@ -1,20 +1,19 @@
-import time
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
 from Quiz import extractor, generator
 from Pinecone_CRUD.main import create_index, upsert_document_data, upsert_url_content, delete_source, getContext, getSpecificContext
 from getSummary.main import getResponse
 from Chat.main import getChatResponse
-import asyncio
 
-app = Flask(__name__)
+app = FastAPI()
 
-@app.route('/', methods=['GET'])
+@app.get("/")
 def home():
     return "Home"
 
-@app.route('/generateQuiz', methods=['POST'])
-def GenerateQuize():
-    data = request.get_json()
+@app.post('/generateQuiz')
+async def GenerateQuize(request: Request):
+    data = await request.json()
     
     # Get Video ID & Transcript
     video_id = extractor.getID(url=data['youtubeURLLink'])
@@ -24,14 +23,15 @@ def GenerateQuize():
     print(f"Quiz generating of the video: {video_id}")
     quizzes = generator.generate_quiz(transcript)
 
-    return jsonify({
+    return {
         'success': True,
         'message': quizzes
-    })
+    }
 
-@app.route('/upsert_documents', methods=['POST'])
-def UpsertDocuments():
-    data = request.get_json()
+# verified
+@app.post('/upsert_documents')
+async def UpsertDocuments(request: Request):
+    data = await request.json()
     
     # Create INDEX if not exist
     INDEX = create_index(data['indexID'])
@@ -43,13 +43,12 @@ def UpsertDocuments():
         index=INDEX
     )
 
-    return jsonify({
-        'message': upsertedOrNot
-    })
+    return {'message': upsertedOrNot}
 
-@app.route('/delete_documents', methods=['POST'])
-def deleteDocuments():
-    data = request.get_json()
+# verified
+@app.post('/delete_documents')
+async def deleteDocuments(request: Request):
+    data = await request.json()
     
     # Create INDEX if not exist
     INDEX = create_index(data['indexID'])
@@ -61,13 +60,12 @@ def deleteDocuments():
         docType='doc'
     )
 
-    return jsonify({
-        'message': deletedOrNot
-    })
+    return {'message': deletedOrNot}
 
-@app.route('/upsert_url_info', methods=['POST'])
-def upsert_url_info():
-    data = request.get_json()
+# verfied
+@app.post('/upsert_url_info')
+async def upsert_url_info(request: Request):
+    data = await request.json()
     
     # Create Index If Not Exist
     INDEX = create_index(data['indexID'])
@@ -79,13 +77,12 @@ def upsert_url_info():
         docID=data['docID']
     )
 
-    return jsonify({
-        'message': upsertedOrNot
-    })
+    return {'message': upsertedOrNot}
 
-@app.route('/delete_url_info', methods=['POST'])
-def deleteUrls():
-    data = request.get_json()
+# verified
+@app.post('/delete_url_info')
+async def deleteUrls(request: Request):
+    data = await request.json()
     
     # Create INDEX if not exist
     INDEX = create_index(data['indexID'])
@@ -97,34 +94,34 @@ def deleteUrls():
         docType='url'
     )
 
-    return jsonify({
-        'message': deletedOrNot
-    })
+    return {'message': deletedOrNot}
 
-@app.route("/getSummary", methods=['POST'])
-def getSummary():
-    data = request.get_json()
+# varified
+@app.post("/getSummary")
+async def getSummary(request: Request):
+    data = await request.json()
     
     # Fetch context from pinecone database
     context = getContext(
         indexID=data['indexID'], 
         allurlIDs=data['allurlsID'], 
-        alldocIDs=data['alldocsID']
+        alldocIDs=data['alldocsID'] 
     )
 
     # Feed context to model and get response
     response = getResponse(context)
 
     # Send response to client
-    return jsonify({
+    return {
         "questions": response.questions,
         "success": True,
         "summary": response.summary
-    })
+    }
 
-@app.route("/getSummaryForEveryDoc", methods=['POST'])
-def getSummaryForEveryDoc():
-    data = request.get_json()
+# verified
+@app.post("/getSummaryForEveryDoc")
+async def getSummaryForEveryDoc(request: Request):
+    data = await request.json()
     
     context = getSpecificContext(
         sourceType = data["sourceType"],
@@ -135,13 +132,11 @@ def getSummaryForEveryDoc():
     # Feed context to model and get response
     response = getResponse(context)
     
-    return jsonify({
-        "summary": response.summary,
-        "success": True
-    })
+    return {"summary": response.summary, "success": True}
 
-@app.route("/getAIResponse", methods=['POST'])
-def getAIResponse():
+# varified
+@app.post("/getAIResponse")
+async def getAIResponse(request: Request):
     """
     A function which reads four inputs
         - user_query: Query from user.
@@ -159,10 +154,10 @@ def getAIResponse():
     """
 
     # Get data from client
-    data = request.get_json()
+    data = await request.json()
     
     if not data:
-        return {"error": "No JSON received"}, 400
+        raise HTTPException(status_code=400, detail="No JSON received")
 
     # Handle all the usefull parameters
     user_query = data.get("query", "")
@@ -171,17 +166,17 @@ def getAIResponse():
     notebookID = data.get("notebookID", "")
     
     # Invoke our chatbot asynchronously
-    response = asyncio.run(getChatResponse(
+    response = await getChatResponse(
         query=user_query,
         past_conversation=pastConverstation,
         userID=userID,
         notebookID=notebookID
-    ))
+    )
 
     # return response
-    return jsonify({
-        "response": response['messages'][-1].content
-    })
+    return {"response": response['messages'][-1].content}
+
 
 if __name__ == "__main__":
-    app.run(debug=True, threaded=True)
+    import uvicorn
+    uvicorn.run("main:app", port=5000, reload=True)
